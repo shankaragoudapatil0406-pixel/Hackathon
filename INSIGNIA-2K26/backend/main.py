@@ -38,6 +38,17 @@ else:
     print("[Insignia] GEMINI_API_KEY not set -- LLM features will use fallback templates.")
     print("[Insignia] Create backend/.env with: GEMINI_API_KEY=your_key_here")
 
+# ── Supabase ──────────────────────────────────────────────────────────────────
+supabase_db = None
+try:
+    from supabase import create_client, Client
+    SUPABASE_URL = os.getenv("SUPABASE_URL", "https://qzhodtpzajupwgoghmcw.supabase.co")
+    SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF6aG9kdHB6YWp1cHdnb2dobWN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDQ4NzksImV4cCI6MjA5MjAyMDg3OX0.av43zZ-nAZg4FOnHfXNRK_LKL-CAeUZR-ewgdn3VbsI")
+    supabase_db = create_client(SUPABASE_URL, SUPABASE_KEY)
+    print("[Insignia] Supabase Python Client connected.")
+except Exception as e:
+    print(f"[Insignia] Supabase Python Client not available: {e}")
+
 # ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI(
     title="Insignia AI Backend",
@@ -54,7 +65,7 @@ app.add_middleware(
 )
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
-GEMINI_MODEL = "gemini-2.0-flash"
+GEMINI_MODEL = "gemini-2.5-flash"
 
 def ask_gemini(prompt: str, fallback: str = "") -> str:
     """Call Gemini and return text, falling back gracefully."""
@@ -273,6 +284,17 @@ No markdown, no explanation.
             "Use the STAR method in experience descriptions: Situation, Task, Action, Result.",
             "Keep resume to one page for under 5 years experience; two pages max for seniors."
         ])
+
+    if supabase_db and req.email:
+        try:
+            supabase_db.table("resume_history").insert({
+                "email": req.email,
+                "target_role": req.targetRole,
+                "level": req.level,
+                "summary_generated": enhanced_summary
+            }).execute()
+        except Exception as e:
+            print(f"[Insignia] Failed to push resume to Supabase: {e}")
 
     return ResumeResponse(
         enhanced_summary=enhanced_summary,
