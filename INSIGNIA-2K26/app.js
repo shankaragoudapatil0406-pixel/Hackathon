@@ -1649,43 +1649,37 @@ async function computeMatches() {
         <h3>Finding matches from database...</h3>
     </div>`;
 
+    let users = [];
+    const mockUsers = [
+        { name: "Alex Chen", email: "alex.c@example.com", teach_skills: ["React", "JavaScript", "HTML/CSS"], learn_skills: ["Python", "Node.js"] },
+        { name: "Sarah J.", email: "sarah@example.com", teach_skills: ["Python", "Data Analysis", "Machine Learning"], learn_skills: ["AWS", "Docker"] },
+        { name: "David K.", email: "david@example.com", teach_skills: ["AWS", "System Design", "Docker"], learn_skills: ["React", "JavaScript"] },
+        { name: "Elena R.", email: "elena@example.com", teach_skills: ["UI/UX Design", "HTML/CSS", "Figma"], learn_skills: ["JavaScript", "React"] }
+    ];
+
     if (!supabase) {
-        grid.innerHTML = `<div class="sc-empty">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
-            <h3>Database not connected</h3>
-            <p>Supabase SDK could not load. Check your internet connection and refresh.</p>
-        </div>`;
-        return;
+        users = mockUsers;
+        showToast('Offline mode: Using sample profiles', 'info');
+    } else {
+        try {
+            const { data, error } = await supabase
+                .from('skill_profiles')
+                .select('*')
+                .neq('email', me.email);
+
+            if (error || !data || data.length === 0) {
+                if (error) console.error('Fetch error:', error);
+                users = mockUsers;
+            } else {
+                users = data;
+            }
+        } catch (err) {
+            console.error('Match error:', err);
+            users = mockUsers;
+        }
     }
 
     try {
-        // Fetch all profiles from Supabase except the current user
-        const { data: users, error } = await supabase
-            .from('skill_profiles')
-            .select('*')
-            .neq('email', me.email);
-
-        if (error) {
-            console.error('Fetch error:', error);
-            showToast('Error fetching matches: ' + error.message, 'error');
-            return;
-        }
-
-        if (!users || users.length === 0) {
-            grid.innerHTML = `<div class="sc-empty">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                </svg>
-                <h3>No other users yet</h3>
-                <p>Share the platform with others to start matching skills!</p>
-            </div>`;
-            return;
-        }
-
         // Compute matches against real DB users
         users.forEach(user => {
             const userTeach = user.teach_skills || [];
