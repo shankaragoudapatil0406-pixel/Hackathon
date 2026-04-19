@@ -966,6 +966,107 @@ function toggleTopicCompletion(mi, ti, el) {
     if (el.checked) incrementStat('topics');
 }
 
+// ==================== VOICE RECOGNITION & SYNTHESIS ====================
+let recognition = null;
+let isRecording = false;
+
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    
+    recognition.onresult = (event) => {
+        let finalTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+                finalTranscript += event.results[i][0].transcript;
+            }
+        }
+        if (finalTranscript) {
+            const input = document.getElementById('mock-answer-input');
+            const currentVal = input.value;
+            input.value = currentVal + (currentVal.endsWith(' ') || currentVal === '' ? '' : ' ') + finalTranscript;
+        }
+    };
+    
+    recognition.onerror = (event) => {
+        console.warn('Speech recognition error', event.error);
+        if(event.error !== 'no-speech') {
+            stopMockMic();
+        }
+    };
+    
+    recognition.onend = () => {
+        stopMockMic();
+    };
+}
+
+function toggleMockMic(e) {
+    if(e) e.preventDefault();
+    if (!recognition) {
+        showToast('Voice input is not supported in this browser', 'error');
+        return;
+    }
+    
+    if (isRecording) {
+        stopMockMic();
+    } else {
+        startMockMic();
+    }
+}
+
+function startMockMic() {
+    if (!recognition) return;
+    try {
+        recognition.start();
+        isRecording = true;
+        const btn = document.getElementById('mock-mic-btn');
+        if(btn) {
+            btn.classList.add('recording-active');
+            btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg> Stop Voice Input`;
+            btn.style.borderColor = 'red';
+            btn.style.color = 'red';
+        }
+    } catch(err) {
+        console.log('Recognition already started', err);
+    }
+}
+
+function stopMockMic() {
+    if (!recognition) return;
+    try { recognition.stop(); } catch(e){}
+    isRecording = false;
+    const btn = document.getElementById('mock-mic-btn');
+    if(btn) {
+        btn.classList.remove('recording-active');
+        btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg> Start Voice Input`;
+        btn.style.borderColor = '';
+        btn.style.color = '';
+    }
+}
+
+function readMockQuestion() {
+    if (!('speechSynthesis' in window)) return;
+    
+    window.speechSynthesis.cancel();
+    const text = document.getElementById('mock-question-text').textContent;
+    if (!text || text === 'Loading question...') return;
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    const voices = window.speechSynthesis.getVoices();
+    const voice = voices.find(v => v.lang.startsWith('en-') && (v.name.includes('Google') || v.name.includes('Natural'))) || voices.find(v => v.lang.startsWith('en-'));
+    if (voice) utterance.voice = voice;
+    utterance.rate = 0.95;
+    window.speechSynthesis.speak(utterance);
+}
+
+function stopMockSpeaking() {
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+    }
+}
+
 // ==================== MOCK INTERVIEW ====================
 function startMockInterview() {
     const role = document.getElementById('mock-role').value;
@@ -1006,16 +1107,24 @@ function showMockQuestion() {
     document.getElementById('mock-question-text').textContent = q.q;
     document.getElementById('mock-answer-input').value = '';
     document.getElementById('mock-answer-input').focus();
+    
+    // Voice extensions
+    stopMockMic();
+    setTimeout(readMockQuestion, 300);
 }
 
 function submitMockAnswer() {
     const answer = document.getElementById('mock-answer-input').value;
     if (!answer.trim()) { showToast('Please type an answer before submitting', 'error'); return; }
+    stopMockMic();
+    stopMockSpeaking();
     AppState.mockSession.answers.push({ answer, skipped: false });
     advanceMock();
 }
 
 function skipMockQuestion() {
+    stopMockMic();
+    stopMockSpeaking();
     AppState.mockSession.answers.push({ answer: '(Skipped)', skipped: true });
     advanceMock();
 }
@@ -1034,6 +1143,9 @@ function finishMockInterview() {
     clearInterval(AppState.mockTimer);
     document.getElementById('mock-session').style.display = 'none';
     document.getElementById('mock-results').style.display = 'block';
+    
+    stopMockMic();
+    stopMockSpeaking();
 
     const s = AppState.mockSession;
     const results = s.questions.map((q, i) => {
@@ -1093,6 +1205,9 @@ function resetMockInterview() {
     document.getElementById('mock-results').style.display = 'none';
     // Reset score ring
     document.getElementById('mock-score-ring').style.strokeDashoffset = 327;
+    
+    stopMockMic();
+    stopMockSpeaking();
 }
 
 // Profile button click

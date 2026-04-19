@@ -769,7 +769,17 @@
                     <h2 id="mock-question-text" class="mock-question-text">Loading question...</h2>
                 </div>
                 <div class="mock-answer-area">
-                    <textarea id="mock-answer-input" class="mock-answer-input" placeholder="Type your answer here..." rows="6"></textarea>
+                    <textarea id="mock-answer-input" class="mock-answer-input" placeholder="Type your answer here or use voice input..." rows="6"></textarea>
+                    <div class="voice-controls" style="display: flex; gap: 10px; justify-content: flex-end; margin-bottom: 16px;">
+                        <button class="btn btn-sm btn-outline" id="mock-read-btn" onclick="readMockQuestion()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                            Hear Question
+                        </button>
+                        <button class="btn btn-sm btn-outline" id="mock-mic-btn" onclick="toggleMockMic(event)">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
+                            Start Voice Input
+                        </button>
+                    </div>
                     <div class="mock-answer-actions">
                         <button class="btn btn-outline" id="mock-skip-btn" onclick="skipMockQuestion()">Skip Question</button>
                         <button class="btn btn-primary" id="mock-submit-btn" onclick="submitMockAnswer()">
